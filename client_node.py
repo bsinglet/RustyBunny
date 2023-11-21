@@ -1,7 +1,8 @@
 __author__  = 'Benjamin M. Singleton'
 __date__    = '16 November 2023'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
+import binascii
 import socket
 import yaml
 
@@ -18,21 +19,31 @@ def connect_to_control_port(hostname: str, port: int) -> socket.socket:
     return my_socket
 
 
-def get_command(my_socket: socket.socket) -> str:
+def receive_message(my_socket: socket.socket, message_length: int) -> bytes:
     """
     Borrowed from:
     https://docs.python.org/3/howto/sockets.html
     """
-    MSGLEN = 2048
     chunks = []
     bytes_recd = 0
-    while bytes_recd < MSGLEN:
-        chunk = my_socket.recv(min(MSGLEN - bytes_recd, 2048))
+    while bytes_recd < message_length:
+        chunk = my_socket.recv(min(message_length - bytes_recd, 2048))
         if chunk == b'':
             raise RuntimeError("socket connection broken")
         chunks.append(chunk)
         bytes_recd = bytes_recd + len(chunk)
-    return b''.join(chunks).decode()
+    return b''.join(chunks)
+
+
+def get_command(my_socket: socket.socket) -> str:
+    message_length = int.from_bytes(receive_message(my_socket=my_socket, message_length=4))
+    # print(f"Received packet header with message length {message_length}")
+    message = receive_message(my_socket=my_socket, message_length=message_length)
+    # print(f"Received message {message} of length {len(message)}")
+    """checksum = int.from_bytes(receive_message(my_socket=my_socket, message_length=4))
+    if binascii.crc32(message.encode()) != checksum:
+        raise RuntimeError(f"Received message over the wire with checksum {binascii.crc32(message.encode())}, but expected checksum {checksum}")"""
+    return message.decode()
 
 
 def parse_command(command: str) -> list:
