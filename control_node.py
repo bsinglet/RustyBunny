@@ -50,6 +50,8 @@ def main():
         # print(f"Sending message to client node")
         send_packet(client_socket=client_socket, payload="Hello")
         time.sleep(0.5)
+        send_packet(client_socket=client_socket, payload="sh powershell.exe ls")
+        time.sleep(0.5)
         send_packet(client_socket=client_socket, payload="quit")
 
 

